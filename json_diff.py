@@ -1,15 +1,29 @@
+from copy import copy
+
 def make_json_diff(obj):
     if isinstance(obj, dict):
-        return JsonDiffDict(obj)
+        return AJsonDict(obj)
     elif isinstance(obj, list):
-        return JsonDiffList(obj)
+        return AJsonList(obj)
 
-class JsonDiff(object):
-    pass
 
-class JsonDiffDict(dict, JsonDiff):
+class AJsonDiff(object):
+    def __init__(self, original, current):
+        self.original = original
+        self.current = current
+
+
+class AJson(object):
+    original = None
+
+    def changed(self):
+        return AJsonDiff(self.original, self)
+
+
+class AJsonDict(dict, AJson):
     def __init__(self, adict):
-        super(JsonDiffDict, self).__init__(adict)
+        super(AJsonDict, self).__init__(adict)
+        self.original = copy(self)
         self.make_sub_diffs()
 
     def make_sub_diffs(self):
@@ -19,9 +33,10 @@ class JsonDiffDict(dict, JsonDiff):
             and not isinstance(v, float):
                 self[k] = make_json_diff(v)
 
-class JsonDiffList(list, JsonDiff):
+class AJsonList(list, AJson):
     def __init__(self, alist):
-        super(JsonDiffList, self).__init__(alist)
+        super(AJsonList, self).__init__(alist)
+        self.original = copy(self)
         self.make_sub_diffs()
 
     def make_sub_diffs(self):
