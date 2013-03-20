@@ -1,29 +1,54 @@
 from copy import copy
 
-def make_json_diff(obj):
-    if isinstance(obj, dict):
-        return AJsonDict(obj)
-    elif isinstance(obj, list):
-        return AJsonList(obj)
-
-
 class AJsonDiff(object):
     def __init__(self, original, current):
         self.original = original
         self.current = current
 
+    def changed(self):
+        return set()
+    def unchanged(self):
+        return set()
+    def added(self):
+        return set()
+    def removed(self):
+        return set()
+
 
 class AJson(object):
-    original = None
+    _instances = list()
+    _original = _current = _diff = None # for cache
 
-    def changed(self):
-        return AJsonDiff(self.original, self)
+    def diff(self):
+        return self._get_diff()
+
+    def _get_diff(self):
+        if not self._cache_valid():
+            return AJsonDiff(self._original, self)
+        else:
+            return self._diff
+
+    def _cache_valid(self):
+        if self._diff and self._current and self._original == self:
+            return self._diff
+        else:
+            self._current = self
+            self._diff = AJsonDiff(self._original, self)
+            return self._diff
+
+    def get_instance(self, obj):
+        if isinstance(obj, dict):
+            instance = AJsonDict(obj)
+        elif isinstance(obj, list):
+            instance = AJsonList(obj)
+        self._instances.append(instance)
+        return instance
 
 
 class AJsonDict(dict, AJson):
     def __init__(self, adict):
         super(AJsonDict, self).__init__(adict)
-        self.original = copy(self)
+        self._original = copy(self)
         self.make_sub_diffs()
 
     def make_sub_diffs(self):
@@ -31,12 +56,13 @@ class AJsonDict(dict, AJson):
             if not isinstance(v, basestring)\
                and not isinstance(v, int)\
             and not isinstance(v, float):
-                self[k] = make_json_diff(v)
+                self[k] = self.get_instance(v)
+
 
 class AJsonList(list, AJson):
     def __init__(self, alist):
         super(AJsonList, self).__init__(alist)
-        self.original = copy(self)
+        self._original = copy(self)
         self.make_sub_diffs()
 
     def make_sub_diffs(self):
@@ -44,5 +70,5 @@ class AJsonList(list, AJson):
             if not isinstance(v, basestring)\
                and not isinstance(v, int)\
             and not isinstance(v, float):
-                self[i] = make_json_diff(v)
+                self[i] = self.get_instance(v)
 
